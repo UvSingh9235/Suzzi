@@ -57,7 +57,7 @@
     <!-- Screen Scanline Overlay to give retro-cyberpunk monitor feel -->
     <div class="absolute inset-0 pointer-events-none scanline z-40 opacity-70"></div>
 
-    <!-- 1. LOADING SCREEN / GATEWAY (User gesture key to unlock dynamic Synth music) -->
+    <!-- 1. LOADING SCREEN / GATEWAY -->
     <div id="loader" class="absolute inset-0 bg-[#05050a] z-50 flex flex-col justify-center items-center p-6 text-center transition-all duration-1000">
         <div class="max-w-md w-full border border-pink-500/30 bg-[#0b0b16] p-8 rounded-lg neon-border relative overflow-hidden">
             <div class="absolute top-2 left-2 text-xs text-cyan-400 cyber-font tracking-widest">SYS_INIT_v2.6</div>
@@ -86,10 +86,13 @@
                     CONNECT NEURAL LINK
                 </button>
             </div>
+            
+            <!-- Hidden Debug Panel (Only triggers on error) -->
+            <div id="error-log" class="hidden mt-4 text-xs font-mono text-red-400 text-left bg-black/40 p-2 rounded max-h-24 overflow-y-auto border border-red-500/30"></div>
         </div>
     </div>
 
-    <!-- 2. MAIN HUD OVERLAY (Cyberpunk UI elements on top of 3D Canvas) -->
+    <!-- 2. MAIN HUD OVERLAY -->
     <div id="hud" class="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6 opacity-0 transition-opacity duration-1000">
         
         <!-- Top Header Panel -->
@@ -175,25 +178,26 @@
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
     <script>
-        // --- MULTI-USER SAFE GLOBAL VARIABLES ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'cyber-suzi-street';
+        // --- ON-SCREEN LOGGER IN CASE OF ACCIDENTAL JS ERROR ---
+        window.addEventListener('error', function(e) {
+            const errLog = document.getElementById('error-log');
+            if (errLog) {
+                errLog.classList.remove('hidden');
+                errLog.innerHTML += `<div>Error: ${e.message} at line ${e.lineno}</div>`;
+            }
+        });
 
         // --- CORE STATE ---
         let scene, camera, renderer, controls;
-        let rainParticles, rainCount = 1200;
+        let rainParticles, rainCount = 1000;
         let neonLights = [];
         let buildings = [];
         let neonTextures = [];
         let rainSpeed = 1.2;
-        let neonColorPalette = {
-            cyan: 0x00f0ff,
-            pink: 0xff007f,
-            purple: 0x9d00ff,
-            orange: 0xffaa00
-        };
+        let initialized = false;
+        let holoHeart;
 
         // --- WEB AUDIO API SYNTHESIZER ---
-        // Hum kisi audio file par depend nahi karenge, browser se direct futuristic cinematic audio code se generate karenge!
         let audioCtx = null;
         let isAudioPlaying = false;
         let mainOsc, droneOsc1, droneOsc2, filterNode, delayNode;
@@ -201,11 +205,8 @@
 
         function initSynth() {
             try {
-                // Initialize Audio Context
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 
-                // --- 1. DEEP CYBERPUNK DRONE (BASS PAD) ---
-                // Low drone warm sound create karne ke liye do detuned sawtooth oscillators
                 droneOsc1 = audioCtx.createOscillator();
                 droneOsc2 = audioCtx.createOscillator();
                 const droneGain = audioCtx.createGain();
@@ -213,19 +214,18 @@
 
                 droneOsc1.type = 'sawtooth';
                 droneOsc1.frequency.setValueAtTime(65.41, audioCtx.currentTime); // C2 Note
-                droneOsc1.detune.setValueAtTime(-12, audioCtx.currentTime); // Slightly detuned
+                droneOsc1.detune.setValueAtTime(-12, audioCtx.currentTime);
 
                 droneOsc2.type = 'triangle';
                 droneOsc2.frequency.setValueAtTime(65.41, audioCtx.currentTime); // C2 Note
-                droneOsc2.detune.setValueAtTime(12, audioCtx.currentTime); // Slightly detuned
+                droneOsc2.detune.setValueAtTime(12, audioCtx.currentTime);
 
                 filterNode.type = 'lowpass';
-                filterNode.frequency.setValueAtTime(180, audioCtx.currentTime); // Deep warm cut-off
+                filterNode.frequency.setValueAtTime(180, audioCtx.currentTime);
                 filterNode.Q.setValueAtTime(5, audioCtx.currentTime);
 
                 droneGain.gain.setValueAtTime(0.3, audioCtx.currentTime);
 
-                // Connections
                 droneOsc1.connect(filterNode);
                 droneOsc2.connect(filterNode);
                 filterNode.connect(droneGain);
@@ -234,56 +234,43 @@
                 droneOsc1.start();
                 droneOsc2.start();
 
-                // --- 2. LOFI SCI-FI DELAY EFFECT FOR MELODY ---
                 delayNode = audioCtx.createDelay(1.0);
                 const delayFeedback = audioCtx.createGain();
-                const delayDry = audioCtx.createGain();
-                const delayWet = audioCtx.createGain();
+                delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime);
+                delayFeedback.gain.setValueAtTime(0.55, audioCtx.currentTime);
 
-                delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime); // Slow echo
-                delayFeedback.gain.setValueAtTime(0.55, audioCtx.currentTime); // Decay time
-
-                // Loop feedback
                 delayNode.connect(delayFeedback);
                 delayFeedback.connect(delayNode);
 
-                // --- 3. THE NOSTALGIC NEON MELODY GENERATOR ---
-                // Pentatonic Scale (C, D, Eb, G, Bb) to sound futuristic & dreamy
-                const scale = [130.81, 146.83, 155.56, 196.00, 233.08, 261.63, 293.66, 311.13, 392.00]; // Pentatonic notes in C Minor
+                const scale = [130.81, 146.83, 155.56, 196.00, 233.08, 261.63, 293.66, 311.13, 392.00];
                 
                 function playMelodyNote() {
                     if (!isAudioPlaying) return;
-
                     const osc = audioCtx.createOscillator();
                     const noteGain = audioCtx.createGain();
                     
-                    osc.type = 'triangle'; // Soft nostalgic sound
-                    // Choose random note from beautiful scale
+                    osc.type = 'triangle';
                     const randomNote = scale[Math.floor(Math.random() * scale.length)];
                     osc.frequency.setValueAtTime(randomNote, audioCtx.currentTime);
                     
-                    // Slightly glide frequencies to make it sound premium
                     if (Math.random() > 0.6) {
                         osc.frequency.exponentialRampToValueAtTime(randomNote * 1.5, audioCtx.currentTime + 0.6);
                     }
 
                     noteGain.gain.setValueAtTime(0, audioCtx.currentTime);
-                    noteGain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.1); // Attack
-                    noteGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2); // Decay/Sustain
+                    noteGain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.1);
+                    noteGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
 
-                    // Connect to delay line
                     osc.connect(noteGain);
-                    noteGain.connect(audioCtx.destination); // Dry
-                    noteGain.connect(delayNode); // Wet delay
+                    noteGain.connect(audioCtx.destination);
+                    noteGain.connect(delayNode);
 
                     osc.start();
                     osc.stop(audioCtx.currentTime + 1.3);
                 }
 
-                // Connect delay unit to output
                 delayNode.connect(audioCtx.destination);
 
-                // Run beautiful looping sequence (Every 1.6 seconds, play a dreamy dynamic riff)
                 melodyInterval = setInterval(() => {
                     if (Math.random() > 0.2) {
                         playMelodyNote();
@@ -296,7 +283,7 @@
                 isAudioPlaying = true;
                 updateAudioUI();
             } catch (err) {
-                console.warn("Synth failed to unlock due to user audio settings:", err);
+                console.warn("Synth initialization skipped/blocked by gesture:", err);
             }
         }
 
@@ -334,8 +321,7 @@
             }
         }
 
-
-        // --- DYNAMIC CYBERPUNK TERMINAL SIMULATION ---
+        // --- CYBER CONSOLE LOGS ---
         const logs = [
             "Initializing neural street matrix...",
             "Loading procedural neon skyscrapers...",
@@ -359,8 +345,6 @@
                 line.className = "opacity-0 transition-opacity duration-500 leading-relaxed";
                 line.innerHTML = `<span class="text-pink-500 font-bold">&gt;&gt;</span> ${logs[logIndex]}`;
                 terminal.appendChild(line);
-                
-                // Auto scroll terminal to bottom
                 terminal.scrollTop = terminal.scrollHeight;
                 
                 setTimeout(() => {
@@ -368,24 +352,21 @@
                 }, 50);
 
                 logIndex++;
-                setTimeout(typeTerminal, 1800 + Math.random() * 1200);
+                setTimeout(typeTerminal, 1500 + Math.random() * 800);
             }
         }
 
-
-        // --- PROCEDURAL NEON BILLBOARD TEXTURES ---
-        // Programmatically generate beautiful text textures without requiring external files!
+        // --- NEON BILLBOARD GENERATOR (No external images needed!) ---
         function createNeonSignTexture(text, mainColor, glowColor, subtitle = "") {
             const canvas = document.createElement('canvas');
             canvas.width = 512;
             canvas.height = 256;
             const ctx = canvas.getContext('2d');
 
-            // Dark semi-transparent futuristic backing panel
             ctx.fillStyle = 'rgba(5, 5, 12, 0.95)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Technical grid lines on background
+            // Technical grid lines
             ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
             ctx.lineWidth = 1;
             for (let i = 0; i < canvas.width; i += 32) {
@@ -395,4 +376,35 @@
                 ctx.stroke();
             }
 
-   
+            ctx.strokeStyle = mainColor;
+            ctx.lineWidth = 6;
+            ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+            
+            ctx.strokeStyle = glowColor;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+
+            ctx.shadowColor = glowColor;
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 80px "Orbitron", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2 - (subtitle ? 15 : 0));
+
+            if (subtitle) {
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = mainColor;
+                ctx.font = 'bold 22px "Orbitron", sans-serif';
+                ctx.fillText(subtitle, canvas.width / 2, canvas.height / 2 + 65);
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            neonTextures.push(texture);
+            return texture;
+        }
+
+        // --- THREE.JS GRAPHICS SCENE SETUP ---
+        function initGraphics() {
+            if (initialized) return;
+            
