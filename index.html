@@ -407,4 +407,490 @@
         // --- THREE.JS GRAPHICS SCENE SETUP ---
         function initGraphics() {
             if (initialized) return;
+            initialized = true;
+
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight;
+
+            // 1. Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x0a0a18, 0.022);
+
+            // 2. Camera Setup
+            camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
+            camera.position.set(0, 6, 25);
+
+            // 3. Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            container.appendChild(renderer.domElement);
+
+            // 4. OrbitControls with graceful fallback if the script didn't load properly
+            try {
+                if (typeof THREE.OrbitControls !== 'undefined') {
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+                    controls.minDistance = 3;
+                    controls.maxDistance = 60;
+                    controls.target.set(0, 4, 0);
+                } else {
+                    console.warn("OrbitControls not loaded, relying on manual scroll/drag");
+                }
+            } catch (e) {
+                console.error("OrbitControls setup error:", e);
+            }
+
+            // 5. Lights
+            const ambientLight = new THREE.AmbientLight(0x1a1a3a, 0.8);
+            scene.add(ambientLight);
+
+            const moonlight = new THREE.DirectionalLight(0x334466, 1.5);
+            moonlight.position.set(20, 50, -20);
+            scene.add(moonlight);
+
+            // 6. Build City Street & Rain
+            buildStreet();
+            buildRain();
+
+            // 7. Window Resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildStreet() {
+            const roadGeo = new THREE.PlaneGeometry(120, 150);
+            const roadMat = new THREE.MeshStandardMaterial({
+                color: 0x070711,
+                roughness: 0.1,
+                metalness: 0.9
+            });
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.rotation.x = -Math.PI / 2;
+            road.position.y = 0;
+            scene.add(road);
+
+            const gridHelper = new THREE.GridHelper(120, 50, 0xff007f, 0x00f0ff);
+            gridHelper.position.y = 0.02;
+            gridHelper.material.opacity = 0.25;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            const laneGeo = new THREE.PlaneGeometry(0.5, 120);
+            const laneMat = new THREE.MeshBasicMaterial({
+                color: 0x00f0ff,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
             
+            const leftLane = new THREE.Mesh(laneGeo, laneMat);
+            leftLane.rotation.x = -Math.PI / 2;
+            leftLane.position.set(-2, 0.05, 0);
+            scene.add(leftLane);
+
+            const rightLane = new THREE.Mesh(laneGeo, laneMat.clone());
+            rightLane.material.color.setHex(0xff007f);
+            rightLane.rotation.x = -Math.PI / 2;
+            rightLane.position.set(2, 0.05, 0);
+            scene.add(rightLane);
+
+            const leftX = -17;
+            const rightX = 17;
+
+            for (let z = -70; z <= 50; z += 18) {
+                const hLeft = 20 + Math.random() * 25;
+                createBuilding(leftX - Math.random() * 3, hLeft, z, true);
+
+                const hRight = 20 + Math.random() * 25;
+                createBuilding(rightX + Math.random() * 3, hRight, z, false);
+            }
+
+            createFloatingHoloHeart();
+        }
+
+        function createBuilding(x, height, z, isLeftSide) {
+            const width = 11;
+            const depth = 11;
+
+            const bGeo = new THREE.BoxGeometry(width, height, depth);
+            const bMat = new THREE.MeshStandardMaterial({
+                color: 0x0d0d1a,
+                roughness: 0.7,
+                metalness: 0.2
+            });
+            const building = new THREE.Mesh(bGeo, bMat);
+            building.position.set(x, height / 2, z);
+            scene.add(building);
+            buildings.push(building);
+
+            const windowRows = Math.floor(height / 3);
+            const windowCols = 3;
+            
+            for (let r = 2; r < windowRows - 1; r++) {
+                for (let c = 0; c < windowCols; c++) {
+                    if (Math.random() > 0.4) {
+                        const winGeo = new THREE.PlaneGeometry(0.8, 1.2);
+                        const glowColors = [0x00f0ff, 0xff007f, 0xffaa00, 0xddddff];
+                        const randColor = glowColors[Math.floor(Math.random() * glowColors.length)];
+                        
+                        const winMat = new THREE.MeshBasicMaterial({
+                            color: randColor,
+                            transparent: true,
+                            opacity: 0.7 + Math.random() * 0.3
+                        });
+                        const windowMesh = new THREE.Mesh(winGeo, winMat);
+
+                        if (isLeftSide) {
+                            windowMesh.position.set(x + width/2 + 0.05, r * 3, z - depth/3 + (c * (depth/3)));
+                            windowMesh.rotation.y = Math.PI / 2;
+                        } else {
+                            windowMesh.position.set(x - width/2 - 0.05, r * 3, z - depth/3 + (c * (depth/3)));
+                            windowMesh.rotation.y = -Math.PI / 2;
+                        }
+                        scene.add(windowMesh);
+                    }
+                }
+            }
+
+            if (z === -16 && isLeftSide) {
+                const signTex = createNeonSignTexture("SUZI", "#ff007f", "#ff007f", "SYSTEM_ACCESS: GRANTED");
+                attachBillboard(signTex, x + width/2 + 0.1, height * 0.7, z, "left", 14, 7);
+                addStreetGlow(x + width/2 + 1, height * 0.7, z, 0xff007f);
+            } 
+            else if (z === -16 && !isLeftSide) {
+                const signTex = createNeonSignTexture("スジ", "#00f0ff", "#00f0ff", "NEON DISTRICT");
+                attachBillboard(signTex, x - width/2 - 0.1, height * 0.75, z, "right", 12, 6);
+                addStreetGlow(x - width/2 - 1, height * 0.75, z, 0x00f0ff);
+            }
+            else if (z === 20 && isLeftSide) {
+                const signTex = createNeonSignTexture("AESTHETIC", "#9d00ff", "#9d00ff", "VIBE STATUS // PERFECT");
+                attachBillboard(signTex, x + width/2 + 0.1, height * 0.65, z, "left", 10, 5);
+                addStreetGlow(x + width/2 + 1, height * 0.65, z, 0x9d00ff);
+            }
+            else if (z === -52 && !isLeftSide) {
+                const signTex = createNeonSignTexture("NEO-CITY", "#ffaa00", "#ffaa00", "WARNING: SO COOL");
+                attachBillboard(signTex, x - width/2 - 0.1, height * 0.7, z, "right", 11, 5.5);
+                addStreetGlow(x - width/2 - 1, height * 0.7, z, 0xffaa00);
+            }
+        }
+
+        function attachBillboard(texture, x, y, z, side, w, h) {
+            const signGeo = new THREE.PlaneGeometry(w, h);
+            const signMat = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+            const billboard = new THREE.Mesh(signGeo, signMat);
+            billboard.position.set(x, y, z);
+            
+            if (side === "left") {
+                billboard.rotation.y = Math.PI / 2;
+            } else {
+                billboard.rotation.y = -Math.PI / 2;
+            }
+            scene.add(billboard);
+        }
+
+        function addStreetGlow(x, y, z, colorHex) {
+            const light = new THREE.PointLight(colorHex, 3.5, 30, 1.5);
+            light.position.set(x, y, z);
+            scene.add(light);
+            neonLights.push(light);
+
+            const bulbGeo = new THREE.SphereGeometry(0.3, 8, 8);
+            const bulbMat = new THREE.MeshBasicMaterial({ color: colorHex });
+            const bulb = new THREE.Mesh(bulbGeo, bulbMat);
+            bulb.position.set(x, y + 4, z);
+            scene.add(bulb);
+        }
+
+        function createFloatingHoloHeart() {
+            const heartShape = new THREE.Shape();
+            heartShape.moveTo(0, 0);
+            heartShape.bezierCurveTo(0, 1.5, 1.5, 3, 3, 3);
+            heartShape.bezierCurveTo(4.5, 3, 4.5, 1, 4.5, 0);
+            heartShape.bezierCurveTo(4.5, -1.5, 2.5, -3.5, 0, -5.5);
+            heartShape.bezierCurveTo(-2.5, -3.5, -4.5, -1.5, -4.5, 0);
+            heartShape.bezierCurveTo(-4.5, 1, -4.5, 3, -3, 3);
+            heartShape.bezierCurveTo(-1.5, 3, 0, 1.5, 0, 0);
+
+            const extrudeSettings = { depth: 1.2, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.3, bevelThickness: 0.3 };
+            const heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+            
+            const heartMat = new THREE.MeshBasicMaterial({
+                color: 0xff007f,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            holoHeart = new THREE.Mesh(heartGeo, heartMat);
+            holoHeart.rotation.z = Math.PI;
+            holoHeart.position.set(0, 18, -16);
+            holoHeart.scale.set(0.7, 0.7, 0.7);
+            scene.add(holoHeart);
+
+            const heartGlow = new THREE.PointLight(0xff007f, 6, 25, 1.2);
+            heartGlow.position.set(0, 15, -16);
+            scene.add(heartGlow);
+        }
+
+        function buildRain() {
+            const rainGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(rainCount * 3);
+            const velocities = [];
+
+            for (let i = 0; i < rainCount; i++) {
+                const rx = (Math.random() - 0.5) * 60;
+                const ry = Math.random() * 45 + 5;
+                const rz = (Math.random() - 0.5) * 120;
+                
+                positions[i * 3] = rx;
+                positions[i * 3 + 1] = ry;
+                positions[i * 3 + 2] = rz;
+
+                velocities.push(0.3 + Math.random() * 0.4);
+            }
+
+            rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 16;
+            canvas.height = 16;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 16);
+            grad.addColorStop(0, 'rgba(0, 240, 255, 0.9)');
+            grad.addColorStop(1, 'rgba(255, 0, 127, 0.1)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(6, 0, 4, 16);
+
+            const rainTexture = new THREE.CanvasTexture(canvas);
+            const rainMat = new THREE.PointsMaterial({
+                size: 0.9,
+                map: rainTexture,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending
+            });
+
+            rainParticles = new THREE.Points(rainGeo, rainMat);
+            rainParticles.userData.velocities = velocities;
+            scene.add(rainParticles);
+        }
+
+        function animateRain() {
+            if (!rainParticles) return;
+            const positions = rainParticles.geometry.attributes.position.array;
+            const velocities = rainParticles.userData.velocities;
+
+            for (let i = 0; i < rainCount; i++) {
+                positions[i * 3 + 1] -= velocities[i] * rainSpeed;
+
+                if (positions[i * 3 + 1] < 0.1) {
+                    positions[i * 3 + 1] = 45 + Math.random() * 5;
+                    positions[i * 3] = (Math.random() - 0.5) * 60;
+                }
+            }
+            rainParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // --- ANIMATION FRAME ---
+        let clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (scene) {
+                const elapsedTime = clock.getElapsedTime();
+
+                if (holoHeart) {
+                    holoHeart.rotation.y += 0.015;
+                    holoHeart.position.y = 17.5 + Math.sin(elapsedTime * 2.0) * 0.8;
+                }
+
+                animateRain();
+
+                neonLights.forEach((light, index) => {
+                    const noise = Math.sin(elapsedTime * (5 + index)) * Math.cos(elapsedTime * 3);
+                    if (Math.random() > 0.97) {
+                        light.intensity = 0.4;
+                    } else {
+                        light.intensity = 3.5 + noise * 1.2;
+                    }
+                });
+
+                if (controls) {
+                    controls.update();
+                }
+
+                renderer.render(scene, camera);
+            }
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // --- INSTANT LOADER PROGRESS (No blocking) ---
+        function startInstantLoader() {
+            const bar = document.getElementById('progress-bar');
+            const status = document.getElementById('status-text');
+            const btn = document.getElementById('enter-btn');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 20) + 10;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    status.textContent = "SECURE PROTOCOLS ENGAGED";
+                    status.classList.remove('animate-pulse');
+                    status.classList.add('text-green-400', 'font-bold');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                bar.style.width = progress + '%';
+            }, 100);
+        }
+
+        // --- EXECUTE IMMEDIATELY ---
+        // Pura flow instantly start hoga taaki mobile network par 1 microsecond bhi delay na ho!
+        try {
+            startInstantLoader();
+            setTimeout(() => {
+                initGraphics();
+                animate();
+            }, 50);
+        } catch(e) {
+            console.error("Initialization Failed:", e);
+        }
+
+        // --- INTERACTION EVENT LISTENERS ---
+        document.getElementById('enter-btn').addEventListener('click', () => {
+            initSynth();
+            
+            const loader = document.getElementById('loader');
+            loader.classList.add('opacity-0', 'pointer-events-none');
+            
+            const hud = document.getElementById('hud');
+            setTimeout(() => {
+                hud.classList.remove('opacity-0');
+                hud.classList.add('opacity-100');
+                typeTerminal();
+            }, 500);
+        });
+
+        document.getElementById('audio-toggle-btn').addEventListener('click', toggleAudio);
+
+        let isFlashing = false;
+        document.getElementById('btn-lightning').addEventListener('click', () => {
+            if (isFlashing) return;
+            isFlashing = true;
+
+            const originalFogColor = scene.fog.color.getHex();
+            scene.fog.color.setHex(0xffffff);
+            renderer.setClearColor(0xffffff);
+            
+            if (audioCtx && isAudioPlaying) {
+                const thunderOsc = audioCtx.createOscillator();
+                const thunderGain = audioCtx.createGain();
+                thunderOsc.type = 'sawtooth';
+                thunderOsc.frequency.setValueAtTime(40, audioCtx.currentTime);
+                thunderOsc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 1.2);
+                
+                thunderGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                thunderGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                
+                thunderOsc.connect(thunderGain);
+                thunderGain.connect(audioCtx.destination);
+                thunderOsc.start();
+                thunderOsc.stop(audioCtx.currentTime + 1.3);
+            }
+
+            setTimeout(() => {
+                scene.fog.color.setHex(originalFogColor);
+                renderer.setClearColor(0x05050a);
+                
+                setTimeout(() => {
+                    scene.fog.color.setHex(0xccddff);
+                    renderer.setClearColor(0xccddff);
+                    
+                    setTimeout(() => {
+                        scene.fog.color.setHex(originalFogColor);
+                        renderer.setClearColor(0x05050a);
+                        isFlashing = false;
+                    }, 80);
+                }, 120);
+            }, 60);
+        });
+
+        let activeColorIndex = 0;
+        const palettes = [
+            { neon: 0xff007f, accent: 0x00f0ff },
+            { neon: 0x9d00ff, accent: 0xffaa00 },
+            { neon: 0x00ff66, accent: 0xff007f },
+            { neon: 0x00f0ff, accent: 0xffea00 }
+        ];
+        
+        document.getElementById('btn-color-shift').addEventListener('click', () => {
+            activeColorIndex = (activeColorIndex + 1) % palettes.length;
+            const currentPal = palettes[activeColorIndex];
+
+            if (rainParticles) rainParticles.material.color.setHex(currentPal.accent);
+
+            neonLights.forEach((light, i) => {
+                light.color.setHex(i % 2 === 0 ? currentPal.neon : currentPal.accent);
+            });
+
+            if (holoHeart) {
+                holoHeart.material.color.setHex(currentPal.neon);
+            }
+        });
+
+        let isSlowMo = false;
+        document.getElementById('btn-slow-mo').addEventListener('click', (e) => {
+            isSlowMo = !isSlowMo;
+            if (isSlowMo) {
+                rainSpeed = 0.15;
+                e.target.textContent = "⚡ NORMAL RAIN";
+                e.target.classList.add('bg-purple-500/25');
+            } else {
+                rainSpeed = 1.2;
+                e.target.textContent = "🌌 SLOW RAIN";
+                e.target.classList.remove('bg-purple-500/25');
+            }
+        });
+
+        let highTempo = false;
+        document.getElementById('btn-music-tempo').addEventListener('click', (e) => {
+            highTempo = !highTempo;
+            if (filterNode && delayNode) {
+                if (highTempo) {
+                    filterNode.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 1.0);
+                    delayNode.delayTime.setValueAtTime(0.2, audioCtx.currentTime + 1.0);
+                    e.target.textContent = "🎵 LOWER SYNTH";
+                    e.target.classList.add('bg-yellow-500/25');
+                } else {
+                    filterNode.frequency.exponentialRampToValueAtTime(180, audioCtx.currentTime + 1.0);
+                    delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime + 1.0);
+                    e.target.textContent = "🎵 SYNTH SHIFT";
+                    e.target.classList.remove('bg-yellow-500/25');
+                }
+            }
+        });
+
+    </script>
+</body>
+</html>
+
+```
