@@ -1,391 +1,600 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SUZI-VERSE // Cyberpunk 3D & 2D</title>
-    <!-- Tailwind CSS for futuristic UI overlay -->
+    <title>SUZI-VERSE // Cyberpunk OS</title>
+    <!-- Tailwind CSS for super easy modular styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Orbitron for futuristic vibe, Inter for clean look -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Orbitron for cyberpunk aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     
     <style>
-        body {
+        body, html {
             font-family: 'Inter', sans-serif;
-            background-color: #05050a;
+            background-color: #030308;
             overflow: hidden;
             margin: 0;
             padding: 0;
             user-select: none;
             -webkit-user-select: none;
+            width: 100%;
+            height: 100%;
         }
         .cyber-font {
             font-family: 'Orbitron', sans-serif;
         }
-        /* Glowing neon animations for HUD */
+        /* Neon glowing text & borders */
         .neon-glow-pink {
-            text-shadow: 0 0 10px #ff007f, 0 0 20px #ff007f, 0 0 30px #ff007f;
+            text-shadow: 0 0 8px #ff007f, 0 0 15px #ff007f, 0 0 25px #ff007f;
         }
         .neon-glow-cyan {
-            text-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 30px #00f0ff;
+            text-shadow: 0 0 8px #00f0ff, 0 0 15px #00f0ff;
         }
-        .neon-border {
-            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.2);
+        .neon-border-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 10px rgba(255, 0, 127, 0.2);
+            border: 1px solid rgba(255, 0, 127, 0.5);
+        }
+        .neon-border-cyan {
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.2);
             border: 1px solid rgba(0, 240, 255, 0.5);
         }
-        /* Custom Loader scanline */
+
+        /* Scanline CRT monitor overlay animation */
         .scanline {
             background: linear-gradient(
                 to bottom,
                 rgba(255,255,255,0) 0%,
-                rgba(0, 240, 255, 0.1) 10%,
-                rgba(0, 240, 255, 0.1) 11%,
+                rgba(0, 240, 255, 0.05) 10%,
+                rgba(0, 240, 255, 0.05) 11%,
                 rgba(255,255,255,0) 12%
             );
-            background-size: 100% 10px;
-            animation: scan 4s linear infinite;
+            background-size: 100% 15px;
+            animation: scan 6s linear infinite;
         }
         @keyframes scan {
             0% { background-position: 0 0; }
             100% { background-position: 0 100%; }
         }
+
+        /* --- CSS 3D PERSPECTIVE NEON GRID (No Canvas!) --- */
+        .grid-container {
+            perspective: 300px;
+            perspective-origin: 50% 30%;
+        }
+        .neon-grid {
+            transform: rotateX(65deg);
+            background-image: 
+                linear-gradient(to right, rgba(255, 0, 127, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 0, 127, 0.15) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridScroll 12s linear infinite;
+        }
+        @keyframes gridScroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 400px; }
+        }
+
+        /* --- BULLETPROOF PURE CSS LOADER ANIMATIONS (No JS Blocking) --- */
+        @keyframes progressFill {
+            0% { width: 0%; }
+            100% { width: 100%; }
+        }
+        .css-bar-fill {
+            width: 0%;
+            animation: progressFill 2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        @keyframes unlockBtn {
+            0%, 95% {
+                opacity: 0.4;
+                pointer-events: none;
+                cursor: not-allowed;
+            }
+            100% {
+                opacity: 1;
+                pointer-events: auto;
+                cursor: pointer;
+            }
+        }
+        .css-unlock-btn {
+            animation: unlockBtn 2s forwards;
+        }
+
+        /* Glitch effect for lightning flash */
+        .lightning-flash {
+            background-color: white;
+            opacity: 0;
+            transition: opacity 0.05s ease-out;
+        }
+
+        /* Sound level wave bars dynamic animation */
+        .wave-bar {
+            animation: soundBounce 1.2s infinite ease-in-out;
+        }
+        @keyframes soundBounce {
+            0%, 100% { height: 4px; }
+            50% { height: 24px; }
+        }
     </style>
 </head>
-<body class="relative h-screen w-screen text-white select-none">
+<body class="relative w-full h-full text-white overflow-hidden select-none">
 
-    <!-- Screen Scanline Overlay to give retro-cyberpunk monitor feel -->
-    <div class="absolute inset-0 pointer-events-none scanline z-40 opacity-70"></div>
+    <!-- Screen glitch lightning overlays -->
+    <div id="lightning" class="absolute inset-0 z-50 pointer-events-none lightning-flash"></div>
+    <div class="absolute inset-0 pointer-events-none scanline z-40 opacity-50"></div>
 
-    <!-- 1. LOADING SCREEN / GATEWAY (Guaranteed to finish in 2 seconds) -->
-    <div id="loader" class="absolute inset-0 bg-[#05050a] z-50 flex flex-col justify-center items-center p-6 text-center transition-all duration-1000">
-        <div class="max-w-md w-full border border-pink-500/30 bg-[#0b0b16] p-8 rounded-lg neon-border relative overflow-hidden">
-            <div class="absolute top-2 left-2 text-xs text-cyan-400 cyber-font tracking-widest">SYS_INIT_v2.6</div>
+    <!-- 1. INTRO LOADER GATEWAY (Guaranteed to unlock instantly via CSS) -->
+    <div id="loader" class="absolute inset-0 bg-[#030308] z-50 flex flex-col justify-center items-center p-6 text-center transition-all duration-700">
+        <div class="max-w-md w-full border border-pink-500/30 bg-[#060610]/95 p-8 rounded-xl neon-border-pink relative overflow-hidden backdrop-blur-md">
+            <div class="absolute top-2 left-2 text-[9px] text-cyan-400 cyber-font tracking-widest">GATEWAY_v3.2</div>
             <div class="absolute top-2 right-2 flex space-x-1">
-                <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
             </div>
             
-            <h1 class="text-3xl md:text-4xl font-extrabold cyber-font tracking-wider mt-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 neon-glow-pink">
+            <h1 class="text-3xl font-black cyber-font tracking-widest mt-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 neon-glow-pink">
                 SUZI_NET
             </h1>
-            <p class="text-gray-400 text-sm mt-3 font-mono leading-relaxed">
-                A custom 3D neural simulation built exclusively for <span class="text-cyan-400 font-bold">Suzi</span>. Interactive 3D graphics, dynamic synthetic background soundscapes, and virtual neon streets loaded.
+            <p class="text-gray-400 text-xs mt-3 leading-relaxed">
+                Virtual hardware check complete. Responsive CSS spatial matrix online. Click below to establish direct neural interface with <span class="text-cyan-400 font-bold">Suzi-Verse</span>.
             </p>
 
-            <div class="mt-8 flex flex-col items-center">
-                <div class="w-full bg-gray-900 h-1.5 rounded-full overflow-hidden mb-4 border border-cyan-500/20">
-                    <div id="progress-bar" class="bg-gradient-to-r from-pink-500 to-cyan-500 h-full w-0 transition-all duration-300"></div>
+            <div class="mt-8 flex flex-col items-center w-full">
+                <!-- CSS progress bar -->
+                <div class="w-full bg-gray-950 h-2 rounded-full overflow-hidden mb-3 border border-pink-500/10">
+                    <div class="bg-gradient-to-r from-pink-500 to-cyan-400 h-full css-bar-fill rounded-full"></div>
                 </div>
-                <div id="status-text" class="text-xs text-cyan-400 font-mono tracking-widest uppercase mb-6 animate-pulse">
-                    GENERATING VIRTUAL CITY...
+                
+                <div class="text-[9px] text-cyan-400 font-mono tracking-widest uppercase mb-6 animate-pulse">
+                    ESTABLISHING SYNTHETIC FREQUENCY CHANNELS...
                 </div>
 
-                <button id="enter-btn" disabled class="opacity-50 cursor-not-allowed cyber-font w-full py-3 text-sm font-semibold tracking-widest uppercase rounded bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transition-all duration-300 border border-pink-400 shadow-lg shadow-pink-500/20 active:scale-95">
+                <!-- Instant unlock btn -->
+                <button id="enter-btn" class="css-unlock-btn cyber-font w-full py-3.5 text-xs font-bold tracking-widest uppercase rounded bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 transition-all duration-300 border border-pink-400 shadow-lg shadow-pink-500/20 active:scale-95">
                     CONNECT NEURAL LINK
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- INSTANT LOADER SCRIPT: runs immediately, absolutely zero dependencies! -->
-    <script>
-        (function() {
-            var progress = 0;
-            var interval = setInterval(function() {
-                progress += Math.floor(Math.random() * 15) + 6;
-                if (progress >= 100) {
-                    progress = 100;
-                    clearInterval(interval);
-                    var status = document.getElementById('status-text');
-                    if (status) {
-                        status.textContent = "SECURE PROTOCOLS ENGAGED";
-                        status.style.color = "#4ade80";
-                    }
-                    var btn = document.getElementById('enter-btn');
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.style.opacity = "1";
-                        btn.style.cursor = "pointer";
-                    }
-                }
-                var bar = document.getElementById('progress-bar');
-                if (bar) {
-                    bar.style.width = progress + '%';
-                }
-            }, 80);
-        })();
-    </script>
+    <!-- 2. SYSTEM BACKGROUND (Animated Perspective 3D Grid + Stars) -->
+    <div class="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <!-- Scrolling floor grid (No Canvas) -->
+        <div class="grid-container w-full h-full absolute bottom-0 left-0">
+            <div id="grid-floor" class="neon-grid w-full h-[200%] origin-top -mt-[50%]"></div>
+        </div>
+        <!-- Distant space glow -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-pink-500/10 to-cyan-500/10 rounded-full blur-[120px]"></div>
+    </div>
 
-    <!-- 2. MAIN HUD OVERLAY (Becomes visible on entering) -->
-    <div id="hud" class="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6 opacity-0 transition-opacity duration-1000">
+    <!-- 3. MAIN COGNITIVE INTERFACE (HUD OVERLAY) -->
+    <div id="hud" class="absolute inset-0 pointer-events-none z-30 flex flex-col justify-between p-4 md:p-6 opacity-0 transition-opacity duration-700">
         
-        <!-- Top Header Panel -->
+        <!-- Header HUD Area -->
         <div class="flex justify-between items-start">
-            <div class="pointer-events-auto flex flex-col border border-cyan-500/30 bg-[#06060c]/80 p-3 rounded backdrop-blur-md">
-                <span class="cyber-font text-xs text-pink-500 font-bold tracking-widest">CODENAME:</span>
-                <span class="cyber-font text-xl md:text-2xl text-cyan-400 tracking-wider font-extrabold neon-glow-cyan">SUZI // スジ</span>
-                <span id="rendering-mode-label" class="text-[10px] text-gray-500 font-mono mt-1">STATUS: SCROLLING GRID</span>
+            <div class="pointer-events-auto flex flex-col border border-cyan-500/30 bg-[#04040a]/80 p-3 rounded backdrop-blur-md">
+                <span class="cyber-font text-[8px] text-pink-500 font-bold tracking-widest">TARGET_AESTHETIC:</span>
+                <span class="cyber-font text-lg md:text-xl text-cyan-400 tracking-wider font-extrabold neon-glow-cyan">SUZI // スジ</span>
+                <span class="text-[9px] text-gray-500 font-mono mt-0.5">STATUS: 100% UNBEATABLE VIBE</span>
             </div>
 
-            <!-- Audio / Controls Panel -->
-            <div class="pointer-events-auto flex flex-col space-y-2 items-end">
-                <div class="border border-pink-500/30 bg-[#06060c]/80 p-3 rounded backdrop-blur-md flex items-center space-x-4">
-                    <div class="flex flex-col">
-                        <span class="cyber-font text-[9px] text-pink-400 tracking-widest uppercase">GENERATIVE AUDIO</span>
-                        <span id="music-indicator" class="text-xs text-green-400 font-mono flex items-center gap-1.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-ping"></span> PLAYING SOUNDSCAPE
-                        </span>
-                    </div>
-                    <button id="audio-toggle-btn" class="p-1.5 border border-pink-500/50 rounded bg-pink-500/10 hover:bg-pink-500/30 transition-all active:scale-90 text-xs cyber-font text-pink-300">
-                        MUTED
+            <!-- Dynamic sound panel + interactive visualizer -->
+            <div class="pointer-events-auto flex items-center space-x-3 border border-pink-500/30 bg-[#04040a]/80 p-3 rounded backdrop-blur-md">
+                <!-- Interactive Mini Bouncing Visualizer -->
+                <div class="flex items-end space-x-1 h-6">
+                    <div class="wave-bar w-1 bg-pink-500 rounded" style="animation-delay: 0.1s"></div>
+                    <div class="wave-bar w-1 bg-purple-500 rounded" style="animation-delay: 0.4s"></div>
+                    <div class="wave-bar w-1 bg-cyan-400 rounded" style="animation-delay: 0.2s"></div>
+                    <div class="wave-bar w-1 bg-pink-400 rounded" style="animation-delay: 0.5s"></div>
+                </div>
+                <div class="flex flex-col">
+                    <span class="cyber-font text-[8px] text-pink-400 tracking-widest uppercase">DYNAMIC SYNTH</span>
+                    <button id="audio-toggle-btn" class="text-[10px] cyber-font text-cyan-400 text-left font-bold hover:text-cyan-300">
+                        MUTED // TAP
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Middle Interactive Terminal & Controls (Left/Right) -->
-        <div class="flex flex-col md:flex-row justify-between items-end md:items-center w-full mt-auto mb-4 pointer-events-none">
+        <!-- Center Interactive Hub Section (Displays Holograms & Decryptor Cards) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full pointer-events-none mt-4 flex-grow justify-center items-center">
             
-            <!-- Terminal Output Simulator (Left) -->
-            <div class="pointer-events-auto w-full md:w-80 border border-cyan-500/20 bg-[#06060c]/90 p-4 rounded backdrop-blur-md font-mono text-[11px] text-cyan-400 flex flex-col space-y-1.5 mb-4 md:mb-0 shadow-lg shadow-black/50">
-                <div class="flex items-center justify-between border-b border-cyan-500/20 pb-1 mb-1.5">
-                    <span class="cyber-font text-[9px] text-gray-400 tracking-widest uppercase">CYBER_CONSOLE.LOG</span>
+            <!-- Left Panel: PULSING SVG HOLOGRAM HEARTS -->
+            <div class="pointer-events-auto flex flex-col items-center justify-center border border-cyan-500/20 bg-[#04040a]/75 p-6 rounded-xl backdrop-blur-md text-center shadow-lg">
+                <span class="cyber-font text-[9px] text-cyan-400 tracking-widest uppercase mb-3">NEURAL_HOLOGRAM.SYS</span>
+                
+                <!-- Pulsing heart holographic scanning display -->
+                <div class="relative w-40 h-40 flex items-center justify-center">
+                    <!-- Scanner ring -->
+                    <div class="absolute inset-0 rounded-full border border-dashed border-cyan-400/40 animate-[spin_10s_linear_infinite]"></div>
+                    <div class="absolute inset-4 rounded-full border border-pink-500/20 animate-[spin_5s_linear_infinite_reverse]"></div>
+                    
+                    <!-- SVG Glowing Neon Heart -->
+                    <svg class="w-20 h-20 drop-shadow-[0_0_15px_rgba(255,0,127,0.8)] animate-[pulse_2s_infinite_ease-in-out]" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 28.5C16 28.5 28 20.5 28 12C28 6.5 23.5 3.5 19 3.5C16 3.5 16 7 16 7C16 7 16 3.5 13 3.5C8.5 3.5 4 6.5 4 12C4 20.5 16 28.5 16 28.5Z" 
+                              stroke="#ffffff" stroke-width="2.5" fill="rgba(255, 0, 127, 0.2)" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <div class="mt-4 cyber-font text-xs tracking-widest text-pink-400 neon-glow-pink">
+                    HOLO_SCAN: ACTIVE
+                </div>
+                <div class="text-[9px] text-gray-500 font-mono mt-1">TAP ON THE SPHERE TO SWEEP SYSTEMS</div>
+            </div>
+
+            <!-- Right Panel: SECURE DECRYPTOR WIDGET (Suzi's Message Card) -->
+            <div class="pointer-events-auto flex flex-col justify-between border border-pink-500/20 bg-[#04040a]/75 p-6 rounded-xl backdrop-blur-md shadow-lg min-h-[220px]">
+                <div class="flex items-center justify-between border-b border-pink-500/20 pb-2">
+                    <span class="cyber-font text-[9px] text-pink-400 tracking-widest uppercase">CLASSIFIED_INTELLIGENCE</span>
+                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                </div>
+
+                <!-- Decrypt Message Slot -->
+                <div id="decrypt-container" class="my-4 text-center">
+                    <p id="decrypt-placeholder" class="text-xs text-gray-500 font-mono italic">
+                        [DATA ENCRYPTED: REQUIRES AUTHORIZATION TO UNLOCK]
+                    </p>
+                    <p id="decrypt-message" class="hidden text-sm md:text-base font-semibold leading-relaxed text-cyan-300 font-mono">
+                        "SYSTEM UNLOCKED // Suzi, this customized high-performance interface is built just to show that my coding is in a different league."
+                    </p>
+                </div>
+
+                <!-- Touch trigger lock action button -->
+                <button id="btn-decrypt" class="cyber-font w-full py-2.5 text-[11px] font-bold tracking-widest uppercase rounded border border-cyan-400 bg-cyan-400/10 hover:bg-cyan-400/30 text-cyan-300 transition-all duration-200 active:scale-95 shadow-md shadow-cyan-500/10">
+                    DECRYPT NEURAL DATA
+                </button>
+            </div>
+
+        </div>
+
+        <!-- Bottom Console & Controller Row -->
+        <div class="flex flex-col md:flex-row justify-between items-end md:items-center w-full mt-auto mb-2 pointer-events-none">
+            
+            <!-- Dynamic Console Log (Left) -->
+            <div class="pointer-events-auto w-full md:w-80 border border-cyan-500/20 bg-[#04040a]/90 p-4 rounded backdrop-blur-md font-mono text-[10px] text-cyan-400 flex flex-col space-y-1 shadow-lg">
+                <div class="flex items-center justify-between border-b border-cyan-500/20 pb-1 mb-1">
+                    <span class="cyber-font text-[8px] text-gray-400 tracking-widest uppercase">SYS_CONSOLE.LOG</span>
                     <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
                 </div>
-                <div id="terminal-lines" class="h-28 overflow-y-auto flex flex-col justify-end space-y-1 select-text">
-                    <!-- Dynamic code logs will type out here -->
+                <div id="terminal-lines" class="h-24 overflow-y-auto flex flex-col justify-end space-y-1 select-text">
+                    <!-- Logs will load here -->
                 </div>
             </div>
 
-            <!-- Street Customizer Controls (Right) -->
-            <div class="pointer-events-auto flex flex-col space-y-2 w-full md:w-auto">
-                <div class="border border-pink-500/20 bg-[#06060c]/90 p-4 rounded backdrop-blur-md flex flex-col space-y-3 shadow-lg shadow-black/50">
-                    <span class="cyber-font text-[10px] text-pink-400 tracking-widest uppercase border-b border-pink-500/10 pb-1 font-bold">STREET_CONTROLLER</span>
+            <!-- Customizer controls (Right) -->
+            <div class="pointer-events-auto flex flex-col space-y-2 w-full md:w-auto mt-4 md:mt-0">
+                <div class="border border-pink-500/20 bg-[#04040a]/90 p-3 rounded backdrop-blur-md flex flex-col space-y-2 shadow-lg">
+                    <span class="cyber-font text-[9px] text-pink-400 tracking-widest uppercase border-b border-pink-500/10 pb-1 font-bold">STREET_CONTROLLER</span>
                     
-                    <div class="grid grid-cols-2 gap-2 text-[11px] cyber-font">
-                        <button id="btn-lightning" class="px-3 py-2 border border-cyan-500/40 rounded bg-cyan-500/5 hover:bg-cyan-500/20 transition-all active:scale-95 text-cyan-300 text-center">
+                    <div class="grid grid-cols-2 gap-2 text-[10px] cyber-font">
+                        <button id="btn-lightning" class="px-3 py-2 border border-cyan-500/40 rounded bg-cyan-500/5 hover:bg-cyan-500/20 transition-all active:scale-95 text-cyan-300 font-semibold">
                             ⚡ LIGHTNING
                         </button>
-                        <button id="btn-color-shift" class="px-3 py-2 border border-pink-500/40 rounded bg-pink-500/5 hover:bg-pink-500/20 transition-all active:scale-95 text-pink-300 text-center">
+                        <button id="btn-color-shift" class="px-3 py-2 border border-pink-500/40 rounded bg-pink-500/5 hover:bg-pink-500/20 transition-all active:scale-95 text-pink-300 font-semibold">
                             🌈 COLOR SHIFT
                         </button>
-                        <button id="btn-slow-mo" class="px-3 py-2 border border-purple-500/40 rounded bg-purple-500/5 hover:bg-purple-500/20 transition-all active:scale-95 text-purple-300 text-center">
-                            🌌 SLOW RAIN
+                        <button id="btn-slow-mo" class="px-3 py-2 border border-purple-500/40 rounded bg-purple-500/5 hover:bg-purple-500/20 transition-all active:scale-95 text-purple-300 font-semibold">
+                            🌌 SPEED SHIFT
                         </button>
-                        <button id="btn-music-tempo" class="px-3 py-2 border border-yellow-500/40 rounded bg-yellow-500/5 hover:bg-yellow-500/20 transition-all active:scale-95 text-yellow-300 text-center">
+                        <button id="btn-music-tempo" class="px-3 py-2 border border-yellow-500/40 rounded bg-yellow-500/5 hover:bg-yellow-500/20 transition-all active:scale-95 text-yellow-300 font-semibold">
                             🎵 SYNTH SHIFT
                         </button>
                     </div>
-
-                    <div id="drag-instructions" class="text-[9px] text-gray-500 text-center italic mt-1 font-mono">
-                        *Drag / Touch screen to trigger interactive ripples*
-                    </div>
                 </div>
             </div>
 
         </div>
 
-        <!-- Bottom Footer Info -->
-        <div class="flex flex-col md:flex-row justify-between items-center text-[10px] font-mono text-gray-500 border-t border-cyan-500/10 pt-2 gap-1.5 md:gap-0">
-            <span id="hardware-accelerator">MODE: HIGH_SPEED_CANVAS</span>
-            <span class="text-pink-500 font-semibold cyber-font tracking-widest text-center">BUILT WITH INTENSE TECH VIBES FOR SUZI</span>
-            <span>TEMP: SLICK_AF // LATENCY: 0ms</span>
+        <!-- Footer Systems Coordinates info -->
+        <div class="flex justify-between items-center text-[9px] font-mono text-gray-500 border-t border-cyan-500/10 pt-2">
+            <span>COORDS: X=52.01, Y=1.15</span>
+            <span class="text-pink-500 font-semibold cyber-font tracking-widest">DESIGNED & CODED FOR SUZI</span>
+            <span>DOM_ENGINE // 60FPS</span>
         </div>
 
     </div>
 
-    <!-- Hybrid Canvas Container (Used for both Three.js and 2D canvas dynamically) -->
-    <div id="canvas-container" class="absolute inset-0 w-full h-full z-10">
-        <canvas id="hybrid-canvas" class="w-full h-full"></canvas>
-    </div>
-
     <script>
-        // --- HYBRID GRAPHICS ENGINE (Fail-Safe 3D/2D Mode) ---
-        var is3DActive = false;
-        var canvas = document.getElementById('hybrid-canvas');
-        var ctx2d = null;
-        var scene, camera, renderer, controls;
-        var rainParticles, rainCount = 800;
-        var neonLights = [];
-        var holoHeart;
-        var rainSpeed = 1.2;
-        var colorPaletteIndex = 0;
-        
-        var palettes2D = [
-            { main: '#ff007f', accent: '#00f0ff' }, // Pink/Cyan
-            { main: '#9d00ff', accent: '#ffaa00' }, // Purple/Orange
-            { main: '#00ff66', accent: '#ff007f' }, // Green/Pink
-            { main: '#00f0ff', accent: '#ffea00' }  // Cyan/Yellow
-        ];
+        // --- COGNITIVE SYNTH GENERATOR (Pure Web Audio API, No Files) ---
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let drone1, drone2, filterNode, delayNode;
+        let melodyLoop = null;
 
-        // --- 2D CANVAS PERSPECTIVE PARTICLES (Fallback Variables) ---
-        var rainDrops2D = [];
-        var ripples2D = [];
-        var gridOffset = 0;
-        var pulseAnimation = 0;
-        var flashOpacity = 0;
+        function initSynth() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Deep lowpass ambient drone sounds
+                drone1 = audioCtx.createOscillator();
+                drone2 = audioCtx.createOscillator();
+                const droneGain = audioCtx.createGain();
+                filterNode = audioCtx.createBiquadFilter();
 
-        // --- DYNAMIC LOADER SYSTEM FOR THREE.JS (Loads files safely in background) ---
-        function loadScript(url, callback) {
-            var script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = url;
-            script.onload = function() { callback(null); };
-            script.onerror = function() { callback(new Error('Failed to load ' + url)); };
-            document.head.appendChild(script);
+                drone1.type = 'sawtooth';
+                drone1.frequency.setValueAtTime(65.41, audioCtx.currentTime); // C2 chord bass
+                drone1.detune.setValueAtTime(-8, audioCtx.currentTime);
+
+                drone2.type = 'triangle';
+                drone2.frequency.setValueAtTime(65.41, audioCtx.currentTime);
+                drone2.detune.setValueAtTime(8, audioCtx.currentTime);
+
+                filterNode.type = 'lowpass';
+                filterNode.frequency.setValueAtTime(170, audioCtx.currentTime);
+                filterNode.Q.setValueAtTime(4, audioCtx.currentTime);
+
+                droneGain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+
+                drone1.connect(filterNode);
+                drone2.connect(filterNode);
+                filterNode.connect(droneGain);
+                droneGain.connect(audioCtx.destination);
+
+                drone1.start();
+                drone2.start();
+
+                // Echo delay module
+                delayNode = audioCtx.createDelay(1.0);
+                const delayFeedback = audioCtx.createGain();
+                delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime);
+                delayFeedback.gain.setValueAtTime(0.45, audioCtx.currentTime);
+
+                delayNode.connect(delayFeedback);
+                delayFeedback.connect(delayNode);
+
+                // Beautiful C Minor Pentatonic Scale
+                const scale = [130.81, 146.83, 164.81, 196.00, 220.00, 261.63, 293.66, 329.63, 392.00];
+
+                function playMelody() {
+                    if (!isAudioPlaying || !audioCtx) return;
+                    try {
+                        const osc = audioCtx.createOscillator();
+                        const noteGain = audioCtx.createGain();
+                        
+                        osc.type = 'triangle';
+                        const randNote = scale[Math.floor(Math.random() * scale.length)];
+                        osc.frequency.setValueAtTime(randNote, audioCtx.currentTime);
+
+                        noteGain.gain.setValueAtTime(0, audioCtx.currentTime);
+                        noteGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.1);
+                        noteGain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.2);
+
+                        osc.connect(noteGain);
+                        noteGain.connect(audioCtx.destination);
+                        noteGain.connect(delayNode);
+
+                        osc.start();
+                        osc.stop(audioCtx.currentTime + 1.3);
+                    } catch(e) {}
+                }
+
+                delayNode.connect(audioCtx.destination);
+
+                melodyLoop = setInterval(() => {
+                    if (Math.random() > 0.3) {
+                        playMelody();
+                    }
+                }, 1600);
+
+                isAudioPlaying = true;
+                updateAudioUI();
+            } catch(e) {
+                console.warn("Synth skipped:", e);
+            }
         }
 
-        // Try loading Three.js and OrbitControls
-        var threeJsUrl = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-        var orbitControlsUrl = "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js";
-
-        // Start checking 3D availability
-        loadScript(threeJsUrl, function(err) {
-            if (!err && typeof THREE !== 'undefined') {
-                loadScript(orbitControlsUrl, function(err2) {
-                    if (!err2 && typeof THREE.OrbitControls !== 'undefined') {
-                        // Both scripts loaded successfully, verify WebGL support
-                        try {
-                            var testCanvas = document.createElement('canvas');
-                            var gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-                            if (gl) {
-                                is3DActive = true;
-                                document.getElementById('rendering-mode-label').textContent = "STATUS: ACTIVE 3D REALM";
-                                document.getElementById('hardware-accelerator').textContent = "MODE: WEBGL_3D_ACCELERATED";
-                                document.getElementById('drag-instructions').textContent = "*Drag screen to orbit in 3D Space*";
-                            }
-                        } catch (e) {
-                            console.warn("WebGL not supported, falling back to 2D Canvas");
-                        }
-                    }
-                    initHybridGraphics();
-                });
+        function toggleAudio() {
+            if (!audioCtx) {
+                initSynth();
+                return;
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+                isAudioPlaying = true;
+            } else if (audioCtx.state === 'running' && isAudioPlaying) {
+                audioCtx.suspend();
+                isAudioPlaying = false;
             } else {
-                console.warn("Three.js failed to load or timed out, activating 2D fallback mode.");
-                initHybridGraphics();
+                audioCtx.resume();
+                isAudioPlaying = true;
+            }
+            updateAudioUI();
+        }
+
+        function updateAudioUI() {
+            const btn = document.getElementById('audio-toggle-btn');
+            const waveBars = document.querySelectorAll('.wave-bar');
+            
+            if (isAudioPlaying) {
+                btn.textContent = "🔊 PLAYING // TAP";
+                waveBars.forEach(b => b.style.animationPlayState = "running");
+            } else {
+                btn.textContent = "🔇 MUTED // TAP";
+                waveBars.forEach(b => b.style.animationPlayState = "paused");
+            }
+        }
+
+        // --- DYNAMIC SYSTEM LOGS ---
+        const logs = [
+            "Initializing standard CSS spatial layout...",
+            "Loading perspective neon grid mechanics...",
+            "Booting dynamic audio synthesizer frequency...",
+            "SUCCESS: Target Suzi identified.",
+            "Analyzing aesthetic index score...",
+            "RESULT: Max rating (100% unparalleled).",
+            "Establishing custom diagnostic console terminal...",
+            "Console ready. Awaiting user interaction..."
+        ];
+        let logIdx = 0;
+        function writeTerminal() {
+            if (logIdx < logs.length) {
+                const term = document.getElementById('terminal-lines');
+                const line = document.createElement('div');
+                line.style.opacity = '0';
+                line.style.transition = 'opacity 0.4s';
+                line.className = "leading-relaxed";
+                line.innerHTML = `<span class="text-pink-500 font-bold">&gt;&gt;</span> ${logs[logIdx]}`;
+                term.appendChild(line);
+                term.scrollTop = term.scrollHeight;
+                
+                setTimeout(() => { line.style.opacity = '1'; }, 50);
+                logIdx++;
+                setTimeout(writeTerminal, 1300 + Math.random() * 800);
+            }
+        }
+
+        // --- USER GESTURES AND COMPONENT EVENTS ---
+
+        // 1. Loader screen unlock click
+        document.getElementById('enter-btn').addEventListener('click', () => {
+            initSynth();
+            
+            // Hide intro loaders
+            const loader = document.getElementById('loader');
+            loader.classList.add('opacity-0', 'pointer-events-none');
+
+            // Show HUD interfaces
+            const hud = document.getElementById('hud');
+            setTimeout(() => {
+                hud.classList.remove('opacity-0');
+                hud.classList.add('opacity-100');
+                writeTerminal();
+            }, 500);
+        });
+
+        // 2. Sound panel toggle click
+        document.getElementById('audio-toggle-btn').addEventListener('click', toggleAudio);
+
+        // 3. Controller: Lightning Flash Screen Effect
+        let isFlashing = false;
+        document.getElementById('btn-lightning').addEventListener('click', () => {
+            if (isFlashing) return;
+            isFlashing = true;
+
+            const flash = document.getElementById('lightning');
+            flash.style.opacity = "1";
+            
+            // Play shock sound
+            if (audioCtx && isAudioPlaying) {
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(45, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(8, audioCtx.currentTime + 1.2);
+                    
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 1.3);
+                } catch(e) {}
+            }
+
+            setTimeout(() => {
+                flash.style.opacity = "0";
+                isFlashing = false;
+            }, 100);
+        });
+
+        // 4. Controller: Dynamic Neon color palette swapping
+        let colorIndex = 0;
+        const colorSchemes = [
+            { main: '#ff007f', accent: '#00f0ff', grid: 'rgba(255, 0, 127, 0.15)' }, // Pink / Cyan
+            { main: '#9d00ff', accent: '#ffaa00', grid: 'rgba(157, 0, 255, 0.15)' }, // Purple / Gold
+            { main: '#00ff66', accent: '#ff007f', grid: 'rgba(0, 255, 102, 0.15)' }, // Green / Pink
+            { main: '#00f0ff', accent: '#ffea00', grid: 'rgba(0, 240, 255, 0.15)' }  // Cyan / Yellow
+        ];
+        
+        document.getElementById('btn-color-shift').addEventListener('click', () => {
+            colorIndex = (colorIndex + 1) % colorSchemes.length;
+            const current = colorSchemes[colorIndex];
+
+            // Swap colors on background CSS perspective grid
+            const gridFloor = document.getElementById('grid-floor');
+            gridFloor.style.backgroundImage = `
+                linear-gradient(to right, ${current.grid} 1px, transparent 1px),
+                linear-gradient(to bottom, ${current.grid} 1px, transparent 1px)
+            `;
+        });
+
+        // 5. Controller: Speed Shift
+        let speedIndex = 0;
+        const speeds = [
+            { time: '12s', label: '🌌 SLOW GRID' },
+            { time: '6s', label: '🌌 NORMAL GRID' },
+            { time: '2s', label: '🌌 FAST GRID' }
+        ];
+        document.getElementById('btn-slow-mo').addEventListener('click', (e) => {
+            speedIndex = (speedIndex + 1) % speeds.length;
+            const spd = speeds[speedIndex];
+            
+            document.getElementById('grid-floor').style.animationDuration = spd.time;
+            e.target.textContent = spd.label;
+        });
+
+        // 6. Controller: Music Synthesizer Cut-off Shifts
+        let filterBright = false;
+        document.getElementById('btn-music-tempo').addEventListener('click', (e) => {
+            filterBright = !filterBright;
+            if (filterNode && delayNode && audioCtx) {
+                if (filterBright) {
+                    filterNode.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.8);
+                    delayNode.delayTime.setValueAtTime(0.2, audioCtx.currentTime + 0.8); // faster delay
+                    e.target.textContent = "🎵 LOWER SYNTH";
+                    e.target.style.background = "rgba(234, 179, 8, 0.25)";
+                } else {
+                    filterNode.frequency.exponentialRampToValueAtTime(170, audioCtx.currentTime + 0.8); // deep drone
+                    delayNode.delayTime.setValueAtTime(0.4, audioCtx.currentTime + 0.8); // slow delay
+                    e.target.textContent = "🎵 SYNTH SHIFT";
+                    e.target.style.background = "rgba(234, 179, 8, 0.05)";
+                }
             }
         });
 
-        // Fallback safety timeout: If script takes more than 1.5 seconds, start 2D fallback immediately so page never freezes!
-        setTimeout(function() {
-            if (typeof scene === 'undefined' && typeof ctx2d === 'undefined') {
-                console.warn("3D loading timed out. Launching 2D Fallback.");
-                initHybridGraphics();
-            }
-        }, 1500);
+        // 7. Interactive Decryptor Action
+        let isDecrypting = false;
+        document.getElementById('btn-decrypt').addEventListener('click', () => {
+            if (isDecrypting) return;
+            isDecrypting = true;
 
+            const placeholder = document.getElementById('decrypt-placeholder');
+            const decryptedMsg = document.getElementById('decrypt-message');
+            const decryptBtn = document.getElementById('btn-decrypt');
 
-        // --- CHOOSE AND INITIALIZE ACTIVE ENGINE ---
-        function initHybridGraphics() {
-            // Resize canvas
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
-            if (is3DActive) {
-                init3DStreet();
-            } else {
-                init2DFallback();
-            }
-        }
-
-        // --- 1. THE STUNNING 3D WEBGL DISTRICT (For modern/supported browsers) ---
-        function init3DStreet() {
-            try {
-                // Remove the 2D canvas context as we will bind WebGL renderer to it
-                var parent = canvas.parentNode;
-                parent.removeChild(canvas);
-                
-                scene = new THREE.Scene();
-                scene.fog = new THREE.FogExp2(0x0a0a18, 0.022);
-
-                camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-                camera.position.set(0, 6, 25);
-
-                renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-                renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-                renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                renderer.toneMappingExposure = 1.0;
-                parent.appendChild(renderer.domElement);
-
-                controls = new THREE.OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true;
-                controls.dampingFactor = 0.05;
-                controls.maxPolarAngle = Math.PI / 2 - 0.05;
-                controls.minDistance = 3;
-                controls.maxDistance = 50;
-                controls.target.set(0, 4, 0);
-
-                // Environmental Lights
-                scene.add(new THREE.AmbientLight(0x11112b, 0.8));
-                var moonlight = new THREE.DirectionalLight(0x334466, 1.5);
-                moonlight.position.set(20, 50, -20);
-                scene.add(moonlight);
-
-                build3DWorld();
-                window.addEventListener('resize', onWindowResize3D);
-                animate3D();
-            } catch (e) {
-                console.error("ThreeJS crash, switching to 2D canvas:", e);
-                is3DActive = false;
-                init2DFallback();
-            }
-        }
-
-        function build3DWorld() {
-            // Road Grid
-            var roadGeo = new THREE.PlaneGeometry(120, 150);
-            var roadMat = new THREE.MeshStandardMaterial({ color: 0x05050f, roughness: 0.1, metalness: 0.95 });
-            var road = new THREE.Mesh(roadGeo, roadMat);
-            road.rotation.x = -Math.PI / 2;
-            scene.add(road);
-
-            var gridHelper = new THREE.GridHelper(120, 50, 0xff007f, 0x00f0ff);
-            gridHelper.position.y = 0.02;
-            gridHelper.material.opacity = 0.2;
-            gridHelper.material.transparent = true;
-            scene.add(gridHelper);
-
-            // Left/Right Skyscrapers
-            for (var z = -70; z <= 50; z += 18) {
-                create3DBuilding(-17, 20 + Math.random() * 20, z, true);
-                create3DBuilding(17, 20 + Math.random() * 20, z, false);
+            // Trigger flashing sound
+            if (audioCtx && isAudioPlaying) {
+                try {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(900, audioCtx.currentTime + 0.5);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.6);
+                } catch(e) {}
             }
 
-            // Central Floating Holo Heart
-            var heartShape = new THREE.Shape();
-            heartShape.moveTo(0, 0);
-            heartShape.bezierCurveTo(0, 1.5, 1.5, 3, 3, 3);
-            heartShape.bezierCurveTo(4.5, 3, 4.5, 1, 4.5, 0);
-            heartShape.bezierCurveTo(4.5, -1.5, 2.5, -3.5, 0, -5.5);
-            heartShape.bezierCurveTo(-2.5, -3.5, -4.5, -1.5, -4.5, 0);
-            heartShape.bezierCurveTo(-4.5, 1, -4.5, 3, -3, 3);
-            heartShape.bezierCurveTo(-1.5, 3, 0, 1.5, 0, 0);
-
-            var extrudeSettings = { depth: 1.0, bevelEnabled: true, bevelSegments: 3, steps: 1, bevelSize: 0.2, bevelThickness: 0.2 };
-            var heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
-            var heartMat = new THREE.MeshBasicMaterial({ color: 0xff007f, wireframe: true, transparent: true, opacity: 0.8 });
+            // Text scrolling decryption effect simulation
+            placeholder.textContent = "[DECRYPTING NEURAL SECTORS...]";
             
-            holoHeart = new THREE.Mesh(heartGeo, heartMat);
-            holoHeart.rotation.z = Math.PI;
-            holoHeart.position.set(0, 17, -15);
-            holoHeart.scale.set(0.6, 0.6, 0.6);
-            scene.add(holoHeart);
+            setTimeout(() => {
+                placeholder.classList.add('hidden');
+                decryptedMsg.classList.remove('hidden');
+                decryptBtn.textContent = "ACCESS GRANTED";
+                decryptBtn.disabled = true;
+                decryptBtn.className = "cyber-font w-full py-2.5 text-[11px] font-bold tracking-widest uppercase rounded border border-green-500 bg-green-500/10 text-green-400";
+            }, 1200);
+        });
 
-            // Giant Neon "SUZI" Billboard on Left
-            create3DNeonBillboard("SUZI", "#ff007f", -11.5, 15, -15, true);
-            // Neon "スジ" on Right
-            create3DNeonBillboard("スジ", "#00f0ff", 11.5, 15, -15, false);
-
-            // Build 3D Rain particles
-            var rainGeo = new THREE.BufferGeometry();
-            var positions = new Float32Array(rainCount * 3);
-            for (var i = 0; i < rainCount; i++) {
-                positions[i * 3] = (Math.random() - 0.5) * 50;
-                positions[i * 3 + 1] = Math.random() * 40;
-                positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
-            }
-            rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-            var rainMat = new THRE
+    </script>
+</body>
+</html>
